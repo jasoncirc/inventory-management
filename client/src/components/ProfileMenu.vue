@@ -297,15 +297,13 @@ const handleLogout = () => {
 }
 
 /* Collapsed icon rail: show only the avatar */
-@media (max-width: 1024px) and (min-width: 769px) {
-  .profile-button {
-    justify-content: center;
-    padding: var(--space-2) 0;
-  }
+.sidebar.collapsed .profile-button {
+  justify-content: center;
+  padding: var(--space-2) 0;
+}
 
-  .profile-name,
-  .chevron {
-    display: none;
-  }
+.sidebar.collapsed .profile-name,
+.sidebar.collapsed .chevron {
+  display: none;
 }
 </style>

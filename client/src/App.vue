@@ -1,6 +1,6 @@
 <template>
-  <div class="app">
-    <aside id="app-sidebar" class="sidebar" :class="{ open: sidebarOpen }">
+  <div class="app" :class="{ 'sidebar-collapsed': isCollapsed }">
+    <aside id="app-sidebar" class="sidebar" :class="{ collapsed: isCollapsed, open: sidebarOpen }">
       <div class="sidebar-brand">
         <span class="sidebar-brand-name">{{ t('nav.companyName') }}</span>
         <span class="sidebar-brand-subtitle">{{ t('nav.subtitle') }}</span>
@@ -31,6 +31,31 @@
           <span class="sidebar-label">{{ t(item.labelKey) }}</span>
         </router-link>
       </nav>
+      <button
+        type="button"
+        class="sidebar-toggle"
+        :aria-label="isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')"
+        :title="isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')"
+        aria-controls="app-sidebar"
+        :aria-expanded="!isCollapsed"
+        @click="toggleCollapsed"
+      >
+        <svg
+          class="sidebar-toggle-icon"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+        <span class="sidebar-label">{{ t('nav.collapseSidebar') }}</span>
+      </button>
       <div class="sidebar-footer">
         <LanguageSwitcher />
         <ProfileMenu
@@ -80,7 +105,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from './api'
 import { useAuth } from './composables/useAuth'
@@ -129,6 +154,62 @@ export default {
 
     // Close the mobile drawer after navigating
     watch(() => route.path, closeSidebar)
+
+    // Sidebar collapse (icons-only) state.
+    // Default: collapsed on screens <= 1024px, expanded above.
+    // Override: clicking the toggle flips the state and stores it in localStorage,
+    // which then wins over the default on later page loads.
+    // Reset: crossing the 1024px breakpoint discards the stored override and
+    // re-applies the default for the new size.
+    // The mobile drawer (<= 768px) is never collapsed; see isCollapsed.
+    const STORAGE_KEY = 'sidebarCollapsed'
+    const mqMobile = window.matchMedia('(max-width: 768px)')
+    const mqNarrow = window.matchMedia('(max-width: 1024px)')
+    const isMobile = ref(mqMobile.matches)
+    const isNarrow = ref(mqNarrow.matches)
+
+    const readStoredCollapsed = () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY)
+        if (stored === 'true') return true
+        if (stored === 'false') return false
+      } catch (err) {
+        // localStorage unavailable (privacy mode, etc.); fall back to default
+      }
+      return null
+    }
+    const writeStoredCollapsed = (value) => {
+      try {
+        if (value === null) localStorage.removeItem(STORAGE_KEY)
+        else localStorage.setItem(STORAGE_KEY, String(value))
+      } catch (err) {
+        // Ignore storage failures; state still works for this session
+      }
+    }
+
+    const sidebarCollapsed = ref(readStoredCollapsed() ?? isNarrow.value)
+    const isCollapsed = computed(() => sidebarCollapsed.value && !isMobile.value)
+
+    const toggleCollapsed = () => {
+      sidebarCollapsed.value = !sidebarCollapsed.value
+      writeStoredCollapsed(sidebarCollapsed.value)
+    }
+
+    const onMobileChange = (e) => { isMobile.value = e.matches }
+    const onNarrowChange = (e) => {
+      isNarrow.value = e.matches
+      sidebarCollapsed.value = e.matches
+      writeStoredCollapsed(null)
+    }
+
+    onMounted(() => {
+      mqMobile.addEventListener('change', onMobileChange)
+      mqNarrow.addEventListener('change', onNarrowChange)
+    })
+    onBeforeUnmount(() => {
+      mqMobile.removeEventListener('change', onMobileChange)
+      mqNarrow.removeEventListener('change', onNarrowChange)
+    })
 
     // Merge mock tasks from currentUser with API tasks
     const tasks = computed(() => {
@@ -204,6 +285,8 @@ export default {
       sidebarOpen,
       closeSidebar,
       toggleSidebar,
+      isCollapsed,
+      toggleCollapsed,
       showProfileDetails,
       showTasks,
       tasks,
@@ -441,39 +524,76 @@ body {
   padding: var(--space-8);
 }
 
+/* Collapse toggle (hidden in the mobile drawer) */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 var(--space-3) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--sidebar-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-toggle:hover {
+  background: var(--sidebar-hover-bg);
+  color: #ffffff;
+}
+
+.sidebar-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.sidebar-toggle-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
 /* Collapsed icon rail */
-@media (max-width: 1024px) and (min-width: 769px) {
-  .sidebar {
-    width: var(--sidebar-width-collapsed);
-  }
+.sidebar.collapsed {
+  width: var(--sidebar-width-collapsed);
+}
 
-  .workspace {
-    margin-left: var(--sidebar-width-collapsed);
-  }
+.app.sidebar-collapsed .workspace {
+  margin-left: var(--sidebar-width-collapsed);
+}
 
-  .sidebar-brand {
-    align-items: center;
-    padding: var(--space-6) var(--space-2);
-  }
+.sidebar.collapsed .sidebar-brand {
+  align-items: center;
+  padding: var(--space-6) var(--space-2);
+}
 
-  .sidebar-brand-subtitle,
-  .sidebar-label {
-    display: none;
-  }
+.sidebar.collapsed .sidebar-brand-subtitle,
+.sidebar.collapsed .sidebar-label {
+  display: none;
+}
 
-  .sidebar-brand-name {
-    font-size: 0.75rem;
-    max-width: 100%;
-  }
+.sidebar.collapsed .sidebar-brand-name {
+  font-size: 0.75rem;
+  max-width: 100%;
+}
 
-  .sidebar-link {
-    justify-content: center;
-    padding: var(--space-2);
-  }
+.sidebar.collapsed .sidebar-link,
+.sidebar.collapsed .sidebar-toggle {
+  justify-content: center;
+  padding: var(--space-2);
+}
 
-  .sidebar-footer {
-    align-items: center;
-  }
+.sidebar.collapsed .sidebar-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.sidebar.collapsed .sidebar-footer {
+  align-items: center;
 }
 
 /* Off-canvas drawer */
@@ -498,6 +618,10 @@ body {
 
   .hamburger {
     display: inline-flex;
+  }
+
+  .sidebar-toggle {
+    display: none;
   }
 
   .topbar {

@@ -8,6 +8,8 @@ export default {
     demandForecast: 'Demand Forecast',
     reports: 'Reports',
     toggleMenu: 'Toggle navigation menu',
+    collapseSidebar: 'Collapse sidebar',
+    expandSidebar: 'Expand sidebar',
     companyName: 'Catalyst Components',
     subtitle: 'Inventory Management System'
   },

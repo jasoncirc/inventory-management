@@ -116,9 +116,14 @@ Icons are hand-written inline SVG paths. **No icon libraries, no emojis.** Each 
 
 **Page title:** a `computed` that maps `route.path` to the nav label key above (use `useRoute()` in setup).
 
+**Collapsible sidebar (icons-only mode):**
+- The rail is driven by state, not a media query. `sidebarCollapsed` ref in App.vue; `isCollapsed = sidebarCollapsed && !isMobile`. Apply `.sidebar.collapsed` and `.app.sidebar-collapsed` classes.
+- Default: icons-only when `matchMedia('(max-width: 1024px)')` matches, full otherwise. A user toggle overrides this and is persisted to `localStorage.sidebarCollapsed`. Crossing the 1024px breakpoint resets to that size's default and clears the stored value.
+- Toggle button lives inside the sidebar: chevron icon, `type="button"`, translated `aria-label`/`title` (`nav.collapseSidebar` / `nav.expandSidebar`), `aria-controls="app-sidebar"`, `aria-expanded`. Hidden at `<= 768px`.
+- Collapsed: width `--sidebar-width-collapsed`; hide labels, brand subtitle, and language/profile text; center icons; `.workspace` margin matches. Animate width and margin (0.2s).
+
 **Responsive behavior:**
-- `> 1024px`: full sidebar with labels.
-- `769px - 1024px`: collapsed icon rail (`--sidebar-width-collapsed`). Hide labels, brand subtitle, and language/profile text; center icons. `.workspace` margin matches.
+- `> 768px`: full or icons-only sidebar per the collapse state above.
 - `<= 768px`: sidebar is an off-canvas drawer (`transform: translateX(-100%)` plus `visibility: hidden` so closed links are not focusable; slides in when `sidebarOpen`). `.workspace` margin-left 0. Hamburger button in topbar toggles it; backdrop click and route change close it (`watch(() => route.path, ...)`).
 
 ## Component Adjustments
@@ -133,7 +138,7 @@ Icons are hand-written inline SVG paths. **No icon libraries, no emojis.** Each 
 ### ProfileMenu.vue and LanguageSwitcher.vue
 - Restyle the triggers for the dark sidebar footer (text `--sidebar-text`, hover `--sidebar-hover-bg`, full width).
 - Dropdown menus open **upward**: `bottom: calc(100% + var(--space-2)); top: auto;`. They keep a light surface, `--shadow-md`, and z-index 1000.
-- In the collapsed rail: the profile trigger shows only the avatar initials circle, and the language switcher shows only the language code.
+- In the collapsed rail: the profile trigger shows only the avatar initials circle, and the language switcher shows only the language code. Target it with a plain ancestor selector in the scoped styles, e.g. `.sidebar.collapsed .language-label` (Vue scopes only the last compound, so the outside ancestor still matches). Do NOT use `:global(.sidebar.collapsed) .x`: Vue compiles that to just `.sidebar.collapsed`, dropping `.x` and applying the rule to the sidebar itself.
 - Do not change emitted events (`show-profile-details`, `show-tasks`) or the logic.
 - Icon-only triggers in the rail still need an accessible name (for example `:aria-label="localeName"`).
 
@@ -186,7 +191,8 @@ Servers: frontend `http://localhost:3000`, API `http://localhost:8001`. Use Play
 1. **Desktop (1440x900):** visit all 6 routes. Check that the sidebar is visible, exactly one nav item is active and it is the correct one, the topbar title matches, and there are no console errors. Screenshot the Dashboard.
 2. **Filters:** on Dashboard and Orders, change each of the 4 filters. Confirm the data updates and the network requests carry the query params.
 3. **Sidebar footer:** open ProfileMenu. It opens upward, and its Profile Details and Tasks modals render above the sidebar and topbar. Switch the language to ja; all sidebar labels, including Reports, translate.
-4. **Tablet (1024x800):** the sidebar collapses to an icon rail, tooltips show labels, and the content is not overlapped.
+4. **Tablet (1024x800):** the sidebar defaults to the icon rail, tooltips show labels, and the content is not overlapped. The toggle expands and re-collapses it.
+4b. **Collapse toggle (1440x900):** the toggle switches to icons-only and back; the choice survives a reload; resizing across 1024px resets to that size's default.
 5. **Mobile (390x844):** the sidebar is hidden and the hamburger opens the drawer with a backdrop. Navigating closes the drawer, and a backdrop click closes it.
 6. **Modals:** open a detail modal (for example, click an Inventory row); it covers the sidebar and topbar.
 7. **Backend untouched:** run `pytest backend/` from `tests/` and confirm it passes.

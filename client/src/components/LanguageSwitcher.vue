@@ -203,20 +203,18 @@ const selectLanguage = (locale) => {
 }
 
 /* Collapsed icon rail: show only the language code */
-@media (max-width: 1024px) and (min-width: 769px) {
-  .language-button {
-    justify-content: center;
-    padding: var(--space-2) 0;
-  }
+.sidebar.collapsed .language-button {
+  justify-content: center;
+  padding: var(--space-2) 0;
+}
 
-  .globe-icon,
-  .language-label,
-  .chevron {
-    display: none;
-  }
+.sidebar.collapsed .globe-icon,
+.sidebar.collapsed .language-label,
+.sidebar.collapsed .chevron {
+  display: none;
+}
 
-  .language-code {
-    display: inline;
-  }
+.sidebar.collapsed .language-code {
+  display: inline;
 }
 </style>
